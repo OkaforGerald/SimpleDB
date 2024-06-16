@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.Dynamic;
 using System.Globalization;
 using System.Linq;
 using System.Reflection.Metadata.Ecma335;
@@ -9,18 +11,19 @@ using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using SimpleDB.Exceptions;
+using SimpleDB.Extensions;
 using JsonSerializer = System.Text.Json.JsonSerializer;
 
 namespace SimpleDB
 {
-    public class Database
+    public class JsonStore
     {
         private readonly string file;
         private JsonSerializerOptions JsonSerializerOptions;
         private JArray data;
         private Queue<PendingCommits> PendingChanges = new Queue<PendingCommits>();
 
-        public Database(string file)
+        public JsonStore(string file)
         {
             this.file = file;
             data = JArray.Parse(FileAccess.GetJsonFromDb(file) ?? "");
@@ -115,6 +118,28 @@ namespace SimpleDB
             }
         }
 
+        public IDbCollection<T> FindAll<T>()
+        {
+            return data.ToDbCollection<T>();
+        }
+
+        public IEnumerable<T>? FindByCondition<T>(Func<T, bool> predicate)
+        {
+            try
+            {
+               var response =  data.ToDbCollection<T>()
+                .FindByCondition(predicate);
+
+                return response;
+            }
+            catch(NotFoundException ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+
+            return default;
+        } 
+
         public bool Commit()
         {
             bool IsSuccessful = false;
@@ -124,17 +149,29 @@ namespace SimpleDB
                 {
                     var change = PendingChanges.Dequeue();
 
-                    IsSuccessful = change.Action switch
+                    switch(change.Action)
                     {
-                        DbAction.Create => CommitCreate(change.data),
-                        _ => false
-                    };
+                        case DbAction.Create:
+                            CommitCreate(change.data);
+                            break;
+                    }
+
+                    try
+                    {
+                        FileAccess.WriteJsonToDb(file, data.ToString(Formatting.None));
+
+                        return true;
+                    }
+                    catch (Exception ex)
+                    {
+                        return false;
+                    }
                 }
             }
             return IsSuccessful;
         }
 
-        private bool CommitCreate(JObject NewAddition)
+        private void CommitCreate(JObject NewAddition)
         {
             if (data.Parent is null)
             {
@@ -143,15 +180,6 @@ namespace SimpleDB
             else
             {
                 data.AddAfterSelf(NewAddition);
-            }
-            try
-            {
-                FileAccess.WriteJsonToDb(file, data.ToString(Formatting.None));
-
-                return true;
-            }catch (Exception ex)
-            {
-                return false;
             }
         }
 

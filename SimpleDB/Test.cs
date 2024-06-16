@@ -13,6 +13,8 @@ namespace SimpleDB
         public string Name { get; set; }
 
         public string Workplace { get; set; }
+
+        public List<string> strings => new List<string> { "Omo", "mo", "o"};
     }
 
     public class EmployeeV2
@@ -28,20 +30,35 @@ namespace SimpleDB
     { 
         public static void Main(string[] args)
         {
-            Database v1 = new Database("database.json");
+            JsonStore v1 = new JsonStore("database.json");
 
-            //v1.Insert<Employee>(new Employee { Id = 1, Name = "Onyeka", Workplace = "Lafarge" });
+            //v1.Insert<Employee>(new Employee {Name = "Canice", Workplace = "Lafarge" });
 
             //v1.Commit();
 
-            Database v2 = new Database("v2.json");
+            var bb = v1.FindAll<Employee>();
+            foreach (var item in v1.FindAll<Employee>())
+            {
+                Console.WriteLine($"{item.Id} {item.Name} {item.Workplace}");
+            }
+            Console.ReadLine();
+
+            //Get me the employee with Id = 2
+            Console.WriteLine(v1.FindByCondition<Employee>(x => x.Name.Contains("cand", StringComparison.InvariantCultureIgnoreCase)).FirstOrDefault().Name);
+            JsonStore v2 = new JsonStore("v2.json");
             try
             {
-                v2.Insert<EmployeeV2>(new EmployeeV2 { Id = Guid.Parse("569f6ece-2e0e-4bb9-a73d-22c0ffd93420"), Name = "Raighne", Workplace = "Google" });
-                v2.Insert<EmployeeV2>(new EmployeeV2 { Id = Guid.Parse("569f6ece-2e0e-4bb9-a73d-22c0ffd93420"), Name = "Raighne", Workplace = "Google" });
-                v2.Commit();
+                //v2.Insert<EmployeeV2>(new EmployeeV2 {Name = "Raighne", Workplace = "Google" });
+                //v2.Insert<EmployeeV2>(new EmployeeV2 {Name = "Raighne", Workplace = "Google" });
+                //v2.Commit();
 
-            }catch(Exception ex)
+                foreach(var item in v2.FindAll<EmployeeV2>())
+                {
+                    Console.WriteLine($"{item.Id} {item.Name} {item.Workplace}");
+                }
+                Console.ReadLine();
+            }
+            catch(Exception ex)
             {
                 Console.WriteLine(ex.Message.ToString());
                 Console.ReadLine();
