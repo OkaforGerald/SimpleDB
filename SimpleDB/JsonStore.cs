@@ -107,7 +107,16 @@ namespace SimpleDB
             }
             else
             {
-                var key = (dynamic)JObject.Parse(json)["id"];
+                dynamic key;
+
+                if (prop?.PropertyType == typeof(Guid))
+                {
+                    key = (Guid)JObject.Parse(json)["id"];
+                }
+                else
+                {
+                    key = (dynamic)JObject.Parse(json)["id"];
+                }
 
                 if (data.Any(x => (dynamic)x["id"] == key) || PendingChanges.Any(x => (dynamic)x.data["id"] == key))
                 {
@@ -118,26 +127,24 @@ namespace SimpleDB
             }
         }
 
-        public IDbCollection<T> FindAll<T>()
+        public ICollection<T> FindAll<T>()
         {
-            return data.ToDbCollection<T>();
+            return data.ToList<T>();
         }
 
         public IEnumerable<T>? FindByCondition<T>(Func<T, bool> predicate)
         {
-            try
+            var response = data.ToList<T>()
+                .Where(predicate);
+            
+            if(!response.Any())
             {
-               var response =  data.ToDbCollection<T>()
-                .FindByCondition(predicate);
-
+                throw new NotFoundException($"{typeof(T)} which fits the condition does not exist!");
+            }
+            else
+            {
                 return response;
             }
-            catch(NotFoundException ex)
-            {
-                Console.WriteLine(ex.Message);
-            }
-
-            return default;
         } 
 
         public bool Commit()
@@ -149,26 +156,26 @@ namespace SimpleDB
                 {
                     var change = PendingChanges.Dequeue();
 
-                    switch(change.Action)
+                    switch (change.Action)
                     {
                         case DbAction.Create:
                             CommitCreate(change.data);
                             break;
                     }
+                }
 
                     try
                     {
                         FileAccess.WriteJsonToDb(file, data.ToString(Formatting.None));
 
-                        return true;
+                        IsSuccessful = true;
                     }
                     catch (Exception ex)
                     {
-                        return false;
+                    Console.WriteLine(ex.Message);
                     }
-                }
+                return IsSuccessful;
             }
-            return IsSuccessful;
         }
 
         private void CommitCreate(JObject NewAddition)

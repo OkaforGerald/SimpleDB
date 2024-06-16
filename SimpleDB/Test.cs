@@ -32,9 +32,11 @@ namespace SimpleDB
         {
             JsonStore v1 = new JsonStore("database.json");
 
-            //v1.Insert<Employee>(new Employee {Name = "Canice", Workplace = "Lafarge" });
+            v1.Insert<Employee>(new Employee { Name = "Raighne", Workplace = "Lafarge" });
+            v1.Insert<Employee>(new Employee { Id = 24, Name = "Onyeka", Workplace = "Lafarge" });
+            v1.Insert<Employee>(new Employee { Name = "Canice", Workplace = "Lafarge" });
 
-            //v1.Commit();
+            v1.Commit();
 
             var bb = v1.FindAll<Employee>();
             foreach (var item in v1.FindAll<Employee>())
@@ -43,27 +45,33 @@ namespace SimpleDB
             }
             Console.ReadLine();
 
-            //Get me the employee with Id = 2
-            Console.WriteLine(v1.FindByCondition<Employee>(x => x.Name.Contains("cand", StringComparison.InvariantCultureIgnoreCase)).FirstOrDefault().Name);
-            JsonStore v2 = new JsonStore("v2.json");
-            try
-            {
-                //v2.Insert<EmployeeV2>(new EmployeeV2 {Name = "Raighne", Workplace = "Google" });
-                //v2.Insert<EmployeeV2>(new EmployeeV2 {Name = "Raighne", Workplace = "Google" });
-                //v2.Commit();
+            // Get me the employee with Id = 2
+            Console.WriteLine(v1.FindByCondition<Employee>(x => x.Name.Contains("cani", StringComparison.InvariantCultureIgnoreCase)).FirstOrDefault().Name);
+            //JsonStore v2 = new JsonStore("v2.json");
+            //try
+            //{
+            //    //v2.Insert<EmployeeV2>(new EmployeeV2 { Id = Guid.NewGuid(), Name = "Onyeka", Workplace = "Google" });
+            //    v2.Insert<EmployeeV2>(new EmployeeV2 { Name = "Raighne", Workplace = "Google" });
+            //    v2.Insert<EmployeeV2>(new EmployeeV2 { Id = Guid.NewGuid(), Name = "Onyeka", Workplace = "Google" });
 
-                foreach(var item in v2.FindAll<EmployeeV2>())
-                {
-                    Console.WriteLine($"{item.Id} {item.Name} {item.Workplace}");
-                }
-                Console.ReadLine();
-            }
-            catch(Exception ex)
-            {
-                Console.WriteLine(ex.Message.ToString());
-                Console.ReadLine();
-            }
-            
+            //    v2.Commit();
+
+            //    foreach (var item in v2.FindAll<EmployeeV2>())
+            //    {
+            //        Console.WriteLine($"{item.Id} {item.Name} {item.Workplace}");
+            //    }
+
+            //    Console.WriteLine(v2.FindByCondition<EmployeeV2>(x => x.Id == Guid.Parse("68b6705e-960d-40c4-9182-f430afa55e70"))
+            //        .FirstOrDefault()
+            //        .Name);
+            //    Console.ReadLine();
+            //}
+            //catch (Exception ex)
+            //{
+            //    Console.WriteLine(ex.Message.ToString());
+            //    Console.ReadLine();
+            //}
+
         }
     }
 }

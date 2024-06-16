@@ -10,9 +10,9 @@ namespace SimpleDB.Extensions
 {
     public static class JArrayExtensions
     {
-        public static IDbCollection<T> ToDbCollection<T>(this JArray array)
+        public static ICollection<T> ToList<T>(this JArray array)
         {
-            DbCollection<T> list = new DbCollection<T>();
+            var list = new List<T>();
 
             foreach(var child in array.Children())
             {
