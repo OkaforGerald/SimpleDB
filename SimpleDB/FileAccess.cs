@@ -20,7 +20,7 @@ namespace SimpleDB
 
                 stream.Dispose();
 
-                File.WriteAllText(path, "[]");
+                File.WriteAllText(path, "{}");
             }
 
             return File.ReadAllText(path);
