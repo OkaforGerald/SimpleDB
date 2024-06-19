@@ -14,7 +14,7 @@ namespace SimpleDB.Extensions
         {
             var list = new List<T>();
 
-            var meta = array.Where(x => x["metadata"] != null).FirstOrDefault();
+            var meta = array.FirstOrDefault(x => x["metadata"] != null);
             if (meta != null) { meta.Remove(); }
 
             foreach (var child in array.Children())

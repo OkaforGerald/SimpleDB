@@ -1,11 +1,11 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Dynamic;
 using System.Globalization;
 using System.Linq;
 using System.Reflection;
-using System.Reflection.Metadata.Ecma335;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -13,7 +13,6 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using SimpleDB.Exceptions;
 using SimpleDB.Extensions;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 using JsonSerializer = System.Text.Json.JsonSerializer;
 
 namespace SimpleDB
@@ -161,7 +160,7 @@ namespace SimpleDB
                     {
                         throw new DuplicateKeyException($"{typeof(T)} with Id {key} already Exists!");
                     }
-                    metadata.MaxId = key > metadata.MaxId ? key + 1: metadata.MaxId++;
+                    metadata.MaxId = key >= metadata.MaxId ? key + 1: metadata.MaxId++;
                     metadata.UsedIds.Add(key);
                     SetMetadata(tablename, metadata);
                 }
@@ -219,6 +218,7 @@ namespace SimpleDB
         {
             var tablename = typeof(T).Name.ToLower();
             data = GetTableJson(tablename);
+            var metaObject = GetMetadata(tablename);
 
             var items = FindByCondition<T>(predicate);
 
@@ -227,11 +227,45 @@ namespace SimpleDB
             foreach(var item in items)
             {
                 string json = JsonSerializer.Serialize(item, JsonSerializerOptions);
+                if (metaObject is not null)
+                {
+                    var mObj = metaObject.ToString(Formatting.None);
+                    var metadataJson = mObj.Remove(0, 1).Remove(mObj.Length - 2).Remove(0, 11);
+                    var metadata = JsonSerializer.Deserialize<Metadata>(metadataJson, JsonSerializerOptions);
+
+                    var id = (int)JObject.Parse(json)["id"];
+                    metadata?.UsedIds.Remove(id);
+                    SetMetadata(tablename, metadata);
+                }
                 newData = newData.Replace($"{json}", "").Replace(",,", ",").Replace("[,", "[").Replace(",]", "]");
             }
-            var c = JsonSerializer.Serialize(newData, JsonSerializerOptions);
             
             PendingChanges.Enqueue(new PendingCommits(tablename, DbAction.Delete, Array: JArray.Parse(newData)));
+        }
+
+        public void DeleteOne<T>(dynamic id)
+        {
+            var tablename = typeof(T).Name.ToLower();
+            data = GetTableJson(tablename);
+            var metaObject = GetMetadata(tablename);
+
+            var item = data.FirstOrDefault(x => x["id"] == id);
+
+            if(item is not null)
+            {
+                if (metaObject is not null)
+                {
+                    var mObj = metaObject.ToString(Formatting.None);
+                    var metadataJson = mObj.Remove(0, 1).Remove(mObj.Length - 2).Remove(0, 11);
+                    var metadata = JsonSerializer.Deserialize<Metadata>(metadataJson, JsonSerializerOptions);
+
+                    metadata?.UsedIds.Remove(id);
+                    SetMetadata(tablename, metadata);
+                }
+                item.Remove();
+            }
+
+            PendingChanges.Enqueue(new PendingCommits(tablename, DbAction.Delete, Array: data));
         }
 
         public bool Commit()
@@ -304,7 +338,7 @@ namespace SimpleDB
             var table = _data[tablename];
 
             var json = JArray.Parse(table.ToString(Formatting.None));
-            var meta = json.Where(x => x["metadata"] != null).FirstOrDefault();
+            var meta = json.FirstOrDefault(x => x["metadata"] != null);
             if (meta != null) { meta.Remove(); }
             return json;
         }
@@ -316,7 +350,7 @@ namespace SimpleDB
                 var table = _data[tablename];
 
                 var json = JArray.Parse(table.ToString(Formatting.None));
-                var response = json.Where(x => x["metadata"] != null).FirstOrDefault()?.ToString(Formatting.None);
+                var response = json.FirstOrDefault(x => x["metadata"] != null)?.ToString(Formatting.None);
                 
                 if(response is not null)
                 {

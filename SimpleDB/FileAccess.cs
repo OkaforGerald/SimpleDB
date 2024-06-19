@@ -12,7 +12,15 @@ namespace SimpleDB
     {
         public static string GetJsonFromDb(string filename)
         {
-            var path = $"{Directory.GetParent(Directory.GetCurrentDirectory()).Parent.Parent.FullName}\\{filename}";
+            string? path = null;
+            if (filename.Split('\\').Any())
+            {
+                path = filename;
+            }
+            else
+            {
+                path = $"{Directory.GetParent(Directory.GetCurrentDirectory()).Parent.Parent.FullName}\\{filename}";
+            }
 
             if (!File.Exists(path))
             {

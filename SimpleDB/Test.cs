@@ -30,43 +30,28 @@ namespace SimpleDB
     { 
         public static void Main(string[] args)
         {
-            //JsonStore v1 = new JsonStore("database.json");
-
-            //v1.Insert<Employee>(new Employee { Name = "Raighne", Workplace = "Lafarge" });
-            //v1.Insert<Employee>(new Employee { Id = 24, Name = "Onyeka", Workplace = "Lafarge" });
-            //v1.Insert<Employee>(new Employee { Name = "Canice", Workplace = "Lafarge" });
-
-            //v1.Commit();
-
-            //var bb = v1.FindAll<Employee>();
-            //foreach (var item in v1.FindAll<Employee>())
-            //{
-            //    Console.WriteLine($"{item.Id} {item.Name} {item.Workplace}");
-            //}
-            //Console.ReadLine();
-
-            //// Get me the employee with Id = 2
-            //Console.WriteLine(v1.FindByCondition<Employee>(x => x.Name.Contains("cani", StringComparison.InvariantCultureIgnoreCase)).FirstOrDefault().Name);
             JsonStore v2 = new JsonStore("v2.json");
             try
             {
-                //v2.CreateTable<EmployeeV2>();
-                //v2.Insert<EmployeeV2>(new EmployeeV2 { Name = "Raighne", Workplace = "Google" });
-                //v2.Insert<EmployeeV2>(new EmployeeV2 { Id = Guid.NewGuid(), Name = "Onyeka", Workplace = "Google" });
-                //v2.Insert<EmployeeV2>(new EmployeeV2 { Name = "Onyeka", Workplace = "Google" });
-                
-                //v2.Commit();
-                //v2.CreateTable<Employee>();
-                //v2.Insert<Employee>(new Employee { Name = "Raighne", Workplace = "Lafarge" });
-                //v2.Insert<Employee>(new Employee { Id = 6, Name = "Onyeka", Workplace = "Lafarge" });
-                //v2.Insert<Employee>(new Employee { Name = "Canice", Workplace = "Lafarge" });
+                v2.CreateTable<EmployeeV2>();
+                v2.Insert<EmployeeV2>(new EmployeeV2 { Name = "Raighne", Workplace = "Google" });
+                v2.Insert<EmployeeV2>(new EmployeeV2 { Id = Guid.NewGuid(), Name = "Onyeka", Workplace = "Google" });
+                v2.Insert<EmployeeV2>(new EmployeeV2 { Name = "Onyeka", Workplace = "Google" });
+
+                v2.CreateTable<Employee>();
+                v2.Insert<Employee>(new Employee { Name = "Raighne", Workplace = "Lafarge" });
+                v2.Insert<Employee>(new Employee { Id = 4, Name = "Onyeka", Workplace = "Lafarge" });
+                v2.Insert<Employee>(new Employee { Name = "Canice", Workplace = "Lafarge" });
+
+                v2.Commit();
+
+                //v2.DeleteByCondition<Employee>(x => x.Id == 1);
 
                 //v2.Commit();
 
-                //v2.DeleteByCondition<EmployeeV2>(x => true);
-
+                //v2.DeleteOne<Employee>(3);
                 //v2.Commit();
-                foreach (var item in v2.FindAll<EmployeeV2>())
+                foreach (var item in v2.FindAll<Employee>())
                 {
                     Console.WriteLine($"{item.Id} {item.Name} {item.Workplace}");
                 }
