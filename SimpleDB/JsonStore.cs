@@ -13,6 +13,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using SimpleDB.Exceptions;
 using SimpleDB.Extensions;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 using JsonSerializer = System.Text.Json.JsonSerializer;
 
 namespace SimpleDB
@@ -87,10 +88,6 @@ namespace SimpleDB
             var properties = typeof(T).GetProperties();
             var prop = properties.FirstOrDefault(p => p.Name.Equals("id", StringComparison.OrdinalIgnoreCase));
             bool HasKey = prop is not null;
-            if (HasKey)
-            {
-                var usedIds = JsonSerializer.Serialize(new HashSet<int> { }, JsonSerializerOptions);
-            }
             dynamic NextKey;
             // If object has an Id but didn't explicitly give one
             if(HasKey && prop.PropertyType == typeof(int) && (int)JObject.Parse(json)["id"] == 0 ||
@@ -99,37 +96,32 @@ namespace SimpleDB
                 // Get next value for Id
                 if (prop?.PropertyType == typeof(int))
                 {
+                    var metaObject = GetMetadata(tablename).ToString(Formatting.None);
+                    var metadataJson = metaObject.Remove(0, 1).Remove(metaObject.Length - 2).Remove(0, 11);
+                    var metadata = JsonSerializer.Deserialize<Metadata>(metadataJson, JsonSerializerOptions);
+
+                    NextKey = metadata.MaxId;
+                    metadata.MaxId++;
                     if (!data.Children().Any() && !PendingChanges.Where(x => x.Action == DbAction.Create).Any())
                     {
-                        NextKey = 1;
-                    }
-                    else
-                    {
-                        if (!data.Children().Any())
+                        if(metadata.UsedIds is null)
                         {
-                            var LastAddition = PendingChanges.LastOrDefault(x => x.Action == DbAction.Create);
-                            var NextKeyFromQueue = (int)LastAddition?.data["id"] + 1;
-
-                            NextKey = NextKeyFromQueue;
+                            metadata.UsedIds = new HashSet<int> { NextKey };
                         }
                         else
                         {
-                            var prev = (int)data.Last["id"];
-                            var NextKeyFromDb = prev + 1;
-
-                            var LastAddition = PendingChanges.LastOrDefault(x => x.Action == DbAction.Create);
-                            if (LastAddition is null)
-                            {
-                                NextKey = NextKeyFromDb;
-                            }
-                            else
-                            {
-                                var NextKeyFromQueue = (int)LastAddition?.data["id"] + 1;
-
-                                NextKey = NextKeyFromQueue > NextKeyFromDb ? NextKeyFromQueue : NextKeyFromDb;
-                            }
+                            metadata.UsedIds.Add(NextKey);
                         }
+                        
+                    }else if (data.Children().Any())
+                    {
+                        metadata.UsedIds.Add(NextKey);
                     }
+                    else
+                    {
+                        metadata.UsedIds.Add(NextKey);
+                    }
+                    SetMetadata(tablename, metadata);
                 }
                 else if(prop?.PropertyType == typeof(Guid))
                 {
@@ -140,7 +132,7 @@ namespace SimpleDB
                     NextKey = Guid.NewGuid().ToString();
                 };
 
-                if (data.Any(x => (dynamic)x["id"] == NextKey) || PendingChanges.Any(x => (dynamic)x.data["id"] == NextKey))
+                if (data.Any(x => (dynamic)x["id"] == NextKey))
                 {
                     throw new DuplicateKeyException($"{typeof(T)} with Id {NextKey} already Exists!");
                 }
@@ -158,12 +150,27 @@ namespace SimpleDB
                 {
                     key = (Guid)JObject.Parse(json)["id"];
                 }
+                else if (prop?.PropertyType == typeof(int))
+                {
+                    var metaObject = GetMetadata(tablename).ToString(Formatting.None);
+                    var metadataJson = metaObject.Remove(0, 1).Remove(metaObject.Length - 2).Remove(0, 11);
+                    var metadata = JsonSerializer.Deserialize<Metadata>(metadataJson, JsonSerializerOptions);
+                    key = (int)JObject.Parse(json)["id"];
+
+                    if (metadata.UsedIds.Contains(key))
+                    {
+                        throw new DuplicateKeyException($"{typeof(T)} with Id {key} already Exists!");
+                    }
+                    metadata.MaxId = key > metadata.MaxId ? key + 1: metadata.MaxId++;
+                    metadata.UsedIds.Add(key);
+                    SetMetadata(tablename, metadata);
+                }
                 else
                 {
                     key = (dynamic)JObject.Parse(json)["id"];
                 }
 
-                if (data.Any(x => (dynamic)x["id"] == key) || PendingChanges.Any(x => (dynamic)x.data["id"] == key))
+                if (data.Any(x => (dynamic)x["id"] == key))
                 {
                     throw new DuplicateKeyException($"{typeof(T)} with Id {key} already Exists!");
                 }
@@ -275,12 +282,20 @@ namespace SimpleDB
                 tableDb.AddAfterSelf(NewAddition);
             }
 
-            tableDb.Add(GetMetadata(table));
+            if (GetMetadata(table) is not null)
+            {
+                tableDb.Add(GetMetadata(table));
+            }
             _data[table] = tableDb;
         }
 
         private void CommitDelete(string table, JArray NewArray)
         {
+            var meta = GetMetadata(table);
+            if(meta is not null)
+            {
+                NewArray.Add(meta);
+            }
             _data[table] = NewArray;
         }
 
@@ -289,18 +304,43 @@ namespace SimpleDB
             var table = _data[tablename];
 
             var json = JArray.Parse(table.ToString(Formatting.None));
-            json.Where(x => x["metadata"] != null).FirstOrDefault()?.Remove();
+            var meta = json.Where(x => x["metadata"] != null).FirstOrDefault();
+            if (meta != null) { meta.Remove(); }
             return json;
         }
 
-        private JObject GetMetadata(string tablename)
+        private JObject? GetMetadata(string tablename)
         {
-            var table = _data[tablename];
+            lock (_data)
+            {
+                var table = _data[tablename];
 
-            var json = JArray.Parse(table.ToString(Formatting.None));
-            var response = json.Where(x => x["metadata"] != null).FirstOrDefault()?.ToString(Formatting.None);
+                var json = JArray.Parse(table.ToString(Formatting.None));
+                var response = json.Where(x => x["metadata"] != null).FirstOrDefault()?.ToString(Formatting.None);
+                
+                if(response is not null)
+                {
+                    return JObject.Parse(response);
+                }
+                else
+                {
+                    return null;
+                }
+            }
+        }
 
-            return JObject.Parse(response);
+        private void SetMetadata(string tablename, Metadata metadata)
+        {
+            lock (_data)
+            {
+                var oldMeta = GetMetadata(tablename).ToString(Formatting.None);
+
+                var newMeta = JsonSerializer.Serialize(new { Metadata = metadata }, JsonSerializerOptions);
+
+                _data[tablename] = JArray.Parse(_data[tablename].ToString(Formatting.None).Replace(oldMeta, newMeta));
+
+                FileAccess.WriteJsonToDb(file, _data.ToString(Formatting.None));
+            }
         }
 
         private bool TableExists(string table)

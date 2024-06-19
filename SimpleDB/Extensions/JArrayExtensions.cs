@@ -14,7 +14,10 @@ namespace SimpleDB.Extensions
         {
             var list = new List<T>();
 
-            foreach(var child in array.Children())
+            var meta = array.Where(x => x["metadata"] != null).FirstOrDefault();
+            if (meta != null) { meta.Remove(); }
+
+            foreach (var child in array.Children())
             {
                 var json = child.ToString(Newtonsoft.Json.Formatting.None);
 

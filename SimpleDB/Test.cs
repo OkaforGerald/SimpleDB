@@ -51,21 +51,22 @@ namespace SimpleDB
             try
             {
                 //v2.CreateTable<EmployeeV2>();
-                //v2.InsertInto<EmployeeV2>("employeev2", new EmployeeV2 { Name = "Raighne", Workplace = "Google" });
-                //v2.InsertInto<EmployeeV2>("employeev2", new EmployeeV2 { Id = Guid.NewGuid(), Name = "Onyeka", Workplace = "Google" });
-                //v2.InsertInto<EmployeeV2>("employeev2", new EmployeeV2 { Id = Guid.NewGuid(), Name = "Onyeka", Workplace = "Google" });
-
-                v2.CreateTable<Employee>();
-                v2.Insert<Employee>(new Employee { Name = "Raighne", Workplace = "Lafarge" });
-                v2.Insert<Employee>(new Employee { Id = 24, Name = "Onyeka", Workplace = "Lafarge" });
-                v2.Insert<Employee>(new Employee { Name = "Canice", Workplace = "Lafarge" });
-
-                v2.Commit();
-
-                //v2.DeleteByCondition<Employee>(x => true);
+                //v2.Insert<EmployeeV2>(new EmployeeV2 { Name = "Raighne", Workplace = "Google" });
+                //v2.Insert<EmployeeV2>(new EmployeeV2 { Id = Guid.NewGuid(), Name = "Onyeka", Workplace = "Google" });
+                //v2.Insert<EmployeeV2>(new EmployeeV2 { Name = "Onyeka", Workplace = "Google" });
+                
+                //v2.Commit();
+                //v2.CreateTable<Employee>();
+                //v2.Insert<Employee>(new Employee { Name = "Raighne", Workplace = "Lafarge" });
+                //v2.Insert<Employee>(new Employee { Id = 6, Name = "Onyeka", Workplace = "Lafarge" });
+                //v2.Insert<Employee>(new Employee { Name = "Canice", Workplace = "Lafarge" });
 
                 //v2.Commit();
-                foreach (var item in v2.FindAll<Employee>())
+
+                //v2.DeleteByCondition<EmployeeV2>(x => true);
+
+                //v2.Commit();
+                foreach (var item in v2.FindAll<EmployeeV2>())
                 {
                     Console.WriteLine($"{item.Id} {item.Name} {item.Workplace}");
                 }
