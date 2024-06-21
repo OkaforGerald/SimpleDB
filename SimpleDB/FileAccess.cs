@@ -13,7 +13,7 @@ namespace SimpleDB
         public static string GetJsonFromDb(string filename)
         {
             string? path = null;
-            if (filename.Split('\\').Any())
+            if (filename.Split('\\').Count() > 1)
             {
                 path = filename;
             }

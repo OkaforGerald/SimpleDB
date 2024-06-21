@@ -65,7 +65,7 @@ namespace SimpleDB
             }
         }
 
-        public void Insert<T>(T obj) where T : class
+        public void InsertOne<T>(T obj)
         {
             var tablename = typeof(T).Name.ToLower();
             if (obj is null)
@@ -144,17 +144,18 @@ namespace SimpleDB
             else
             {
                 dynamic key;
+                var oldId = JObject.Parse(json)["id"];
 
                 if (prop?.PropertyType == typeof(Guid))
                 {
-                    key = (Guid)JObject.Parse(json)["id"];
+                    key = (Guid)oldId;
                 }
                 else if (prop?.PropertyType == typeof(int))
                 {
                     var metaObject = GetMetadata(tablename).ToString(Formatting.None);
                     var metadataJson = metaObject.Remove(0, 1).Remove(metaObject.Length - 2).Remove(0, 11);
                     var metadata = JsonSerializer.Deserialize<Metadata>(metadataJson, JsonSerializerOptions);
-                    key = (int)JObject.Parse(json)["id"];
+                    key = (int)oldId;
 
                     if (metadata.UsedIds.Contains(key))
                     {
@@ -166,15 +167,28 @@ namespace SimpleDB
                 }
                 else
                 {
-                    key = (dynamic)JObject.Parse(json)["id"];
+                    key = (dynamic)oldId;
                 }
 
-                if (data.Any(x => (dynamic)x["id"] == key))
+                if (data.Any(x => (dynamic)x["id"] == key) || PendingChanges.Any(x => (dynamic)x.data["id"] == key))
                 {
                     throw new DuplicateKeyException($"{typeof(T)} with Id {key} already Exists!");
                 }
 
                 PendingChanges.Enqueue(new PendingCommits(tablename, DbAction.Create, data: JObject.Parse(json)));
+            }
+        }
+
+        public void InsertMultiple<T>(IEnumerable<T> items)
+        {
+            if (items == null)
+            {
+                throw new ArgumentException();
+            }
+
+            foreach(var item in items)
+            {
+                InsertOne<T>(item);
             }
         }
 
@@ -218,7 +232,6 @@ namespace SimpleDB
         {
             var tablename = typeof(T).Name.ToLower();
             data = GetTableJson(tablename);
-            var metaObject = GetMetadata(tablename);
 
             var items = FindByCondition<T>(predicate);
 
@@ -227,6 +240,7 @@ namespace SimpleDB
             foreach(var item in items)
             {
                 string json = JsonSerializer.Serialize(item, JsonSerializerOptions);
+                var metaObject = GetMetadata(tablename);
                 if (metaObject is not null)
                 {
                     var mObj = metaObject.ToString(Formatting.None);
@@ -268,6 +282,75 @@ namespace SimpleDB
             PendingChanges.Enqueue(new PendingCommits(tablename, DbAction.Delete, Array: data));
         }
 
+        public void UpdateByCondition<T>(Func<T, bool> predicate, T replacement)
+        {
+            var items = FindByCondition<T>(predicate);
+            
+            var metaObject = GetMetadata(typeof(T).Name.ToLower());
+            var properties = typeof(T).GetProperties();
+            var prop = properties.FirstOrDefault(p => p.Name.Equals("id", StringComparison.OrdinalIgnoreCase));
+            bool HasKey = prop is not null;
+
+            dynamic Key;
+
+            var newData = data.ToString(Formatting.None);
+
+            foreach(var item in items)
+            {
+                var replacementJson = JsonSerializer.Serialize(replacement, JsonSerializerOptions);
+                var oldJson = JsonSerializer.Serialize(item, JsonSerializerOptions);
+                var oldID = JObject.Parse(oldJson)["id"];
+
+                if (HasKey && prop.PropertyType == typeof(int) && (int)JObject.Parse(replacementJson)["id"] == 0 ||
+                HasKey && prop.PropertyType == typeof(Guid) && (Guid)JObject.Parse(replacementJson)["id"] == Guid.Empty)
+                {
+                    if (prop.PropertyType == typeof(int))
+                    {
+                        Key = (int)oldID;
+                    }else if(prop.PropertyType == typeof(Guid))
+                    {
+                        Key = (Guid)oldID;
+                    }
+                    else
+                    {
+                        Key = (dynamic)oldID;
+                    }
+
+                    var update = JObject.Parse(replacementJson);
+                    update["id"] = Key;
+                    replacementJson = update.ToString(Formatting.None);
+                }
+                else
+                {
+                    var newId = (dynamic)JObject.Parse(replacementJson)["id"];
+
+                    if (newId != oldID)
+                    {
+                        if (metaObject is not null)
+                        {
+                            var mObj = metaObject.ToString(Formatting.None);
+                            var metadataJson = mObj.Remove(0, 1).Remove(mObj.Length - 2).Remove(0, 11);
+                            var metadata = JsonSerializer.Deserialize<Metadata>(metadataJson, JsonSerializerOptions);
+
+                            if(metadata.UsedIds.Contains((int)newId)) throw new DuplicateKeyException($"{typeof(T)} with Id {newId} already Exists!");
+                            if (PendingChanges.Any(x => (int)x.data["id"] == (int)newId)) throw new DuplicateKeyException($"{typeof(T)} with Id {newId} already Exists!");
+                            metadata.UsedIds.Add((int)newId);
+                            metadata.UsedIds.Remove((int)oldID);
+                            metadata.MaxId = metadata.MaxId >= (int)newId ? metadata.MaxId + 1 : (int)newId + 1;
+                            SetMetadata(typeof(T).Name.ToLower(), metadata);
+                        }
+                        else
+                        {
+                            if (data.Any(x => (dynamic)x["id"] == newId) || PendingChanges.Any(x => (dynamic)x.data["id"] == newId)) throw new DuplicateKeyException($"{typeof(T)} with Id {newId} already Exists!");
+                        }
+                    }
+                }
+                    newData = newData.Replace(oldJson, replacementJson).Replace(",,", ",").Replace("[,", "[").Replace(",]", "]");
+            }
+
+            PendingChanges.Enqueue(new PendingCommits(typeof(T).Name.ToLower(), DbAction.Update, Array: JArray.Parse(newData)));
+        }
+
         public bool Commit()
         {
             bool IsSuccessful = false;
@@ -285,7 +368,9 @@ namespace SimpleDB
                         case DbAction.Delete:
                             CommitDelete(change.table, change.Array);
                             break;
-
+                        case DbAction.Update:
+                            CommitDelete(change.table, change.Array);
+                            break;
                     }
                 }
 
@@ -327,6 +412,16 @@ namespace SimpleDB
         {
             var meta = GetMetadata(table);
             if(meta is not null)
+            {
+                NewArray.Add(meta);
+            }
+            _data[table] = NewArray;
+        }
+
+        private void CommitUpdate(string table, JArray NewArray)
+        {
+            var meta = GetMetadata(table);
+            if (meta is not null)
             {
                 NewArray.Add(meta);
             }
