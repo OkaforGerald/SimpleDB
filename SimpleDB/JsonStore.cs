@@ -5,14 +5,17 @@ using System.Diagnostics.CodeAnalysis;
 using System.Dynamic;
 using System.Globalization;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
+using System.Xml;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using SimpleDB.Exceptions;
 using SimpleDB.Extensions;
+using Formatting = Newtonsoft.Json.Formatting;
 using JsonSerializer = System.Text.Json.JsonSerializer;
 
 namespace SimpleDB
@@ -39,11 +42,11 @@ namespace SimpleDB
         public void CreateTable<T>()
         {
             var tablename = typeof(T).Name.ToLower();
-
             var tableExists = TableExists(tablename);
 
             if (!tableExists)
             {
+                var schema = CreateSchema<T>();
                 var properties = typeof(T).GetProperties();
                 var prop = properties.FirstOrDefault(p => p.Name.Equals("id", StringComparison.OrdinalIgnoreCase));
                 bool HasKey = prop is not null;
@@ -52,7 +55,12 @@ namespace SimpleDB
                 if (HasKey && prop?.PropertyType == typeof(int))
                 {
                     string json = JsonSerializer.Serialize(new { Metadata = new Metadata { UsedIds = new HashSet<int> { }, MaxId = 1 } }, JsonSerializerOptions);
+                    array.Add(schema);
                     array.Add(JObject.Parse(json));
+                }
+                else
+                {
+                    array.Add(schema);
                 }
 
                 _data.Add(tablename, array);
@@ -470,6 +478,40 @@ namespace SimpleDB
 
                 FileAccess.WriteJsonToDb(file, _data.ToString(Formatting.None));
             }
+        }
+
+        private JObject CreateSchema<T>()
+        {
+            var properties = typeof(T).GetProperties(BindingFlags.Instance | BindingFlags.Public);
+            var Schema = new ExpandoObject();
+            foreach (var property in properties)
+            {
+                Type type = property.PropertyType;
+                if (type.IsAnsiClass)
+                {
+                    var defaultExp = Expression.Default(type);
+                    var c = Expression.Lambda(defaultExp).Compile().DynamicInvoke();
+
+                    var propName = property.Name;
+                    if (c is null)
+                    {
+                        //nullable property
+                        Schema.TryAdd(propName.ToLower(), "nullable");
+                    }
+                    else
+                    {
+                        //required property
+                        Schema.TryAdd(propName.ToLower(), "required");
+                    }
+                }
+            }
+            var schemaJson = JsonSerializer.Serialize(Schema, JsonSerializerOptions);
+            return JObject.Parse(schemaJson);
+        }
+
+        private bool ValidateAgainstSchema<T>(T obj)
+        {
+            throw new NotImplementedException();
         }
 
         private bool TableExists(string table)
