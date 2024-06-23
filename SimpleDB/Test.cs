@@ -28,9 +28,21 @@ namespace SimpleDB
 
     public class EmployeeV3
     {
+        public string Id { get; set; }
         public string Name { get; set; }
 
         public string Workplace { get; set; }
+    }
+
+    public class EmployeeV4
+    {
+        public int? Id { get; set; }
+        public string Name { get; set; }
+        public bool IsOld { get; set; }
+        public double number { get; set; }
+        public decimal blah { get; set; }
+        public long life { get; set; }
+        public Guid guid { get; set; }
     }
 
     public class Test
@@ -46,8 +58,8 @@ namespace SimpleDB
                 //v2.Insert<EmployeeV2>(new EmployeeV2 { Id = Guid.Parse("b79856bc-a4a6-407e-952e-16ffe105ddb2"), Name = "Onyeka", Workplace = "Google" });
                 //v2.Insert<EmployeeV2>(new EmployeeV2 { Name = "Onyeka", Workplace = "Google" });
 
-                //v2.CreateTable<EmployeeV3>();
-                //v2.Insert<EmployeeV3>(new EmployeeV3 { Name = "Raighne", Workplace = "Lafarge" });
+                //v2.CreateTable<Employee>();
+                //v2.InsertOne<EmployeeV4>(new EmployeeV4 { Name = "Raighne" });
                 //v2.CreateTable<Employee>();
 
                 //v2.InsertOne<Employee>(new Employee { Id = 4, Name = "Onyeka", Workplace = "Lafarge" });
@@ -58,13 +70,13 @@ namespace SimpleDB
 
                 //v2.UpdateByCondition<Employee>(x => true, new Employee {Id = 3,Name = "Replacement", Workplace = "Lafarge" });
 
-                //v2.DeleteByCondition<Employee>(x => true);
+                //v2.DeleteByCondition<EmployeeV4>(x => true);
 
-                v2.Commit();
+                //v2.Commit();
 
                 //v2.DeleteOne<Employee>(3);
                 //v2.Commit();
-                foreach (var item in v2.FindAll<EmployeeV3>())
+                foreach (var item in v2.FindAll<Employee>())
                 {
                     Console.WriteLine($"{item.Name} {item.Workplace}");
                 }

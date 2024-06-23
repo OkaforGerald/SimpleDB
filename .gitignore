@@ -363,3 +363,5 @@ MigrationBackup/
 FodyWeavers.xsd
 /SimpleDB/v2.json
 /SimpleDB/database.json
+/SimpleDB-Tests/UnitTest1.cs
+/SimpleDB-Tests/v2.json
