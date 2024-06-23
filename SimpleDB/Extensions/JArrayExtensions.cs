@@ -19,6 +19,11 @@ namespace SimpleDB.Extensions
 
             foreach (var child in array.Children())
             {
+                if(child == array.First)
+                {
+                    continue;
+                }
+
                 var json = child.ToString(Newtonsoft.Json.Formatting.None);
 
                 var item = JsonSerializer.Deserialize<T>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true});
