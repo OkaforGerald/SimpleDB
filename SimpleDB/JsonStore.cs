@@ -97,8 +97,9 @@ namespace SimpleDB
             bool HasKey = prop is not null;
             dynamic NextKey;
             // If object has an Id but didn't explicitly give one
-            if(HasKey && prop.PropertyType == typeof(int) && (int)JObject.Parse(json)["id"] == 0 ||
-                HasKey && prop.PropertyType == typeof(Guid) && (Guid)JObject.Parse(json)["id"] == Guid.Empty)
+            if(HasKey && prop?.PropertyType == typeof(int) && (int)JObject.Parse(json)["id"] == 0 ||
+                HasKey && prop?.PropertyType == typeof(Guid) && (Guid)JObject.Parse(json)["id"] == Guid.Empty ||
+                HasKey && prop?.PropertyType == typeof(string) && (string)JObject.Parse(json)["id"] == null)
             {
                 // Get next value for Id
                 if (prop?.PropertyType == typeof(int))
@@ -146,6 +147,11 @@ namespace SimpleDB
 
                 var NewAddition = JObject.Parse(json);
                 NewAddition["id"] = NextKey;
+                var invalidProps = ValidateAgainstSchema<T>(JsonSerializer.Deserialize<T>(NewAddition.ToString(Formatting.None), JsonSerializerOptions));
+                if(invalidProps is not null)
+                {
+                    throw new Exception(invalidProps);
+                }
 
                 PendingChanges.Enqueue(new PendingCommits(tablename, DbAction.Create, data: NewAddition));
             }
@@ -165,7 +171,7 @@ namespace SimpleDB
                     var metadata = JsonSerializer.Deserialize<Metadata>(metadataJson, JsonSerializerOptions);
                     key = (int)oldId;
 
-                    if (metadata.UsedIds.Contains(key))
+                    if (metadata?.UsedIds.Contains(key))
                     {
                         throw new DuplicateKeyException($"{typeof(T)} with Id {key} already Exists!");
                     }
@@ -181,6 +187,12 @@ namespace SimpleDB
                 if (data.Any(x => (dynamic)x["id"] == key) || PendingChanges.Any(x => (dynamic)x.data["id"] == key))
                 {
                     throw new DuplicateKeyException($"{typeof(T)} with Id {key} already Exists!");
+                }
+
+                var invalidProps = ValidateAgainstSchema<T>(JsonSerializer.Deserialize<T>(json, JsonSerializerOptions));
+                if (invalidProps is not null)
+                {
+                    throw new Exception(invalidProps);
                 }
 
                 PendingChanges.Enqueue(new PendingCommits(tablename, DbAction.Create, data: JObject.Parse(json)));
@@ -309,8 +321,8 @@ namespace SimpleDB
                 var oldJson = JsonSerializer.Serialize(item, JsonSerializerOptions);
                 var oldID = JObject.Parse(oldJson)["id"];
 
-                if (HasKey && prop.PropertyType == typeof(int) && (int)JObject.Parse(replacementJson)["id"] == 0 ||
-                HasKey && prop.PropertyType == typeof(Guid) && (Guid)JObject.Parse(replacementJson)["id"] == Guid.Empty)
+                if (HasKey && prop?.PropertyType == typeof(int) && (int)JObject.Parse(replacementJson)["id"] == 0 ||
+                HasKey && prop?.PropertyType == typeof(Guid) && (Guid)JObject.Parse(replacementJson)["id"] == Guid.Empty)
                 {
                     if (prop.PropertyType == typeof(int))
                     {
@@ -385,13 +397,13 @@ namespace SimpleDB
                     try
                     {
                         FileAccess.WriteJsonToDb(file, _data.ToString(Formatting.None));
-
-                        IsSuccessful = true;
                     }
                     catch (Exception ex)
                     {
                     Console.WriteLine(ex.Message);
                     }
+
+                IsSuccessful = true;
                 return IsSuccessful;
             }
         }
@@ -438,12 +450,15 @@ namespace SimpleDB
 
         private JArray GetTableJson(string tablename)
         {
-            var table = _data[tablename];
+            lock (_data)
+            {
+                var table = _data[tablename];
 
-            var json = JArray.Parse(table.ToString(Formatting.None));
-            var meta = json.FirstOrDefault(x => x["metadata"] != null);
-            if (meta != null) { meta.Remove(); }
-            return json;
+                var json = JArray.Parse(table.ToString(Formatting.None));
+                var meta = json.FirstOrDefault(x => x["metadata"] != null);
+                if (meta != null) { meta.Remove(); }
+                return json;
+            }
         }
 
         private JObject? GetMetadata(string tablename)
@@ -470,7 +485,7 @@ namespace SimpleDB
         {
             lock (_data)
             {
-                var oldMeta = GetMetadata(tablename).ToString(Formatting.None);
+                var oldMeta = GetMetadata(tablename)?.ToString(Formatting.None);
 
                 var newMeta = JsonSerializer.Serialize(new { Metadata = metadata }, JsonSerializerOptions);
 
@@ -505,18 +520,31 @@ namespace SimpleDB
                     }
                 }
             }
-            var schemaJson = JsonSerializer.Serialize(Schema, JsonSerializerOptions);
-            return JObject.Parse(schemaJson);
+            return JObject.FromObject(Schema);
         }
 
-        private bool ValidateAgainstSchema<T>(T obj)
+        private string? ValidateAgainstSchema<T>(T obj)
         {
-            throw new NotImplementedException();
+            var tableName = typeof(T).Name.ToLower();
+            var schema = _data[tableName]?.First;
+
+            if (schema == null)
+                return "Schema not found";
+
+            var invalidProps = typeof(T).GetProperties()
+                .Where(prop =>
+                    (string)schema[prop.Name.ToLower()] == "required" &&
+                    prop.GetValue(obj) == null)
+                .Select(prop => prop.Name.ToLower());
+
+            return invalidProps.Any()
+                ? $"{string.Join(", ", invalidProps)} is/are required properties"
+                : null;
         }
 
         private bool TableExists(string table)
         {
-            return _data.TryGetValue(table, out JToken array);
+            return _data.TryGetValue(table, out _);
         }
 
         enum DbAction

@@ -52,7 +52,7 @@ namespace SimpleDB
             JsonStore v2 = new JsonStore("v2.json");
             try
             {
-                //v2.CreateTable<EmployeeV2>();
+                //v2.CreateTable<EmployeeV3>();
                 //v2.Insert<EmployeeV2>(new EmployeeV2 { Name = "Raighne", Workplace = "Google" });
                 //v2.Insert<EmployeeV2>(new EmployeeV2 { Id = Guid.Parse("b79856bc-a4a6-407e-952e-16ffe105ddb2"), Name = "Onyeka", Workplace = "Google" });
                 //v2.Insert<EmployeeV2>(new EmployeeV2 { Id = Guid.Parse("b79856bc-a4a6-407e-952e-16ffe105ddb2"), Name = "Onyeka", Workplace = "Google" });
@@ -62,17 +62,17 @@ namespace SimpleDB
                 //v2.InsertOne<EmployeeV4>(new EmployeeV4 { Name = "Raighne" });
                 //v2.CreateTable<Employee>();
 
-                //v2.InsertOne<Employee>(new Employee { Id = 4, Name = "Onyeka", Workplace = "Lafarge" });
+                v2.InsertOne<EmployeeV3>(new EmployeeV3 {Name = "Sleep", Workplace = "Lafarge" });
                 //v2.InsertOne<Employee>(new Employee { Name = "Canice", Workplace = "Lafarge" });
 
                 //v2.InsertMultiple<Employee>(new List<Employee> { new Employee { Name = "Raighne", Workplace = "Lafarge" }, new Employee { Id = 10, Name = "Onyeka", Workplace = "Lafarge" }, new Employee { Name = "Canice", Workplace = "Lafarge" } });
                 //v2.Commit();
 
-                //v2.UpdateByCondition<Employee>(x => true, new Employee {Id = 3,Name = "Replacement", Workplace = "Lafarge" });
+                //v2.DeleteOne<Employee>(4);
 
                 //v2.DeleteByCondition<EmployeeV4>(x => true);
 
-                //v2.Commit();
+                v2.Commit();
 
                 //v2.DeleteOne<Employee>(3);
                 //v2.Commit();
@@ -81,7 +81,7 @@ namespace SimpleDB
                     Console.WriteLine($"{item.Name} {item.Workplace}");
                 }
 
-                Console.WriteLine(v2.FindByCondition<Employee>(x => x.Id == 1 || x.Id == 24)
+                Console.WriteLine(v2.FindByCondition<Employee>(x => x.Id == 4 || x.Id == 24)
                     .FirstOrDefault()
                     .Name);
                 Console.ReadLine();
