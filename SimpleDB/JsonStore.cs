@@ -520,13 +520,26 @@ namespace SimpleDB
                     }
                 }
             }
-            var schemaJson = JsonSerializer.Serialize(Schema, JsonSerializerOptions);
-            return JObject.Parse(schemaJson);
+            return JObject.FromObject(Schema);
         }
 
-        private bool ValidateAgainstSchema<T>(T obj)
+        private string? ValidateAgainstSchema<T>(T obj)
         {
-            throw new NotImplementedException();
+            var tableName = typeof(T).Name.ToLower();
+            var schema = _data[tableName]?.First;
+
+            if (schema == null)
+                return "Schema not found";
+
+            var invalidProps = typeof(T).GetProperties()
+                .Where(prop =>
+                    (string)schema[prop.Name.ToLower()] == "required" &&
+                    prop.GetValue(obj) == null)
+                .Select(prop => prop.Name.ToLower());
+
+            return invalidProps.Any()
+                ? $"{string.Join(", ", invalidProps)} is/are required properties"
+                : null;
         }
 
         private bool TableExists(string table)

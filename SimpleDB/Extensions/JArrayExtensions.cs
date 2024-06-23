@@ -14,8 +14,6 @@ namespace SimpleDB.Extensions
         {
             var list = new List<T>();
 
-            //Remove schema
-            array.First.Remove();
             var meta = array.FirstOrDefault(x => x["metadata"] != null);
             if (meta != null) { meta.Remove(); }
 

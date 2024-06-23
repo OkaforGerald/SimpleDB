@@ -62,17 +62,17 @@ namespace SimpleDB
                 //v2.InsertOne<EmployeeV4>(new EmployeeV4 { Name = "Raighne" });
                 //v2.CreateTable<Employee>();
 
-                //v2.InsertOne<Employee>(new Employee { Id = 4, Name = "Onyeka", Workplace = "Lafarge" });
+                v2.InsertOne<EmployeeV3>(new EmployeeV3 {Name = "Sleep", Workplace = "Lafarge" });
                 //v2.InsertOne<Employee>(new Employee { Name = "Canice", Workplace = "Lafarge" });
 
                 //v2.InsertMultiple<Employee>(new List<Employee> { new Employee { Name = "Raighne", Workplace = "Lafarge" }, new Employee { Id = 10, Name = "Onyeka", Workplace = "Lafarge" }, new Employee { Name = "Canice", Workplace = "Lafarge" } });
                 //v2.Commit();
 
-                //v2.UpdateByCondition<Employee>(x => true, new Employee {Id = 3,Name = "Replacement", Workplace = "Lafarge" });
+                //v2.DeleteOne<Employee>(4);
 
                 //v2.DeleteByCondition<EmployeeV4>(x => true);
 
-                //v2.Commit();
+                v2.Commit();
 
                 //v2.DeleteOne<Employee>(3);
                 //v2.Commit();
