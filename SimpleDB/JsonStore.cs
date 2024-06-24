@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Dynamic;
@@ -26,7 +27,7 @@ namespace SimpleDB
         private JsonSerializerOptions JsonSerializerOptions;
         private JArray data;
         private JObject _data;
-        private Queue<PendingCommits> PendingChanges = new Queue<PendingCommits>();
+        private ConcurrentQueue<PendingCommits> PendingChanges = new ConcurrentQueue<PendingCommits>();
 
         public JsonStore(string file)
         {
@@ -375,13 +376,14 @@ namespace SimpleDB
         public bool Commit()
         {
             bool IsSuccessful = false;
-            lock (PendingChanges)
+            lock (_data)
             {
                 while (PendingChanges.Count > 0)
                 {
-                    var change = PendingChanges.Dequeue();
+                    bool IsDequeued = PendingChanges.TryDequeue(out PendingCommits change);
 
-                    switch (change.Action)
+
+                    switch (change?.Action)
                     {
                         case DbAction.Create:
                             CommitCreate(change.table, change.data);
