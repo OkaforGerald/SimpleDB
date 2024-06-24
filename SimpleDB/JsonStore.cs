@@ -322,7 +322,8 @@ namespace SimpleDB
                 var oldID = JObject.Parse(oldJson)["id"];
 
                 if (HasKey && prop?.PropertyType == typeof(int) && (int)JObject.Parse(replacementJson)["id"] == 0 ||
-                HasKey && prop?.PropertyType == typeof(Guid) && (Guid)JObject.Parse(replacementJson)["id"] == Guid.Empty)
+                HasKey && prop?.PropertyType == typeof(Guid) && (Guid)JObject.Parse(replacementJson)["id"] == Guid.Empty ||
+                HasKey && prop?.PropertyType == typeof(string) && (string)JObject.Parse(replacementJson)["id"] == null)
                 {
                     if (prop.PropertyType == typeof(int))
                     {
