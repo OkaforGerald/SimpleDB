@@ -55,9 +55,9 @@ namespace SimpleDB
                 //v2.Insert<EmployeeV2>(new EmployeeV2 { Name = "Onyeka", Workplace = "Google" });
 
                 //v2.CreateTable<Employee>();
-                //v2.InsertOne<Employee>(new Employee { Id = 10, Name = "Raighne", Workplace = "Kuda" });
+                v2.InsertOne<Employee>(new Employee { Name = "Raighne", Workplace = "Kuda" });
                 //v2.InsertMultiple<Employee>(new List<Employee> { new Employee { Name = "Raighne", Workplace = "Lafarge" }, new Employee { Id = 10, Name = "Onyeka", Workplace = "Lafarge" }, new Employee { Name = "Canice", Workplace = "Lafarge" } });
-                v2.UpdateByCondition<Employee>(x => true, new Employee { Name = "Replacement", Workplace = "Google" });
+                //v2.UpdateByCondition<Employee>(x => true, new Employee { Name = "Replacement", Workplace = "Google" });
                 //v2.DeleteByCondition<Employee>(x => x.Id == 10);
 
                 //v2.CreateTable<EmployeeV2>();
@@ -92,7 +92,7 @@ namespace SimpleDB
                     Console.WriteLine($"{item.Id} {item.Name}");
                 }
 
-                Console.WriteLine(string.Join(',', v2.FindByCondition<Employee>(x => x.Id == 10 || x.Id == 11)));
+                Console.WriteLine(string.Join(',', v2.FindByCondition<Employee>(x => x.Id == 10 || x.Id == 11).Select(x => x.Name)));
                 Console.ReadLine();
             }
             catch (Exception ex)
